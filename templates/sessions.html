@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Manage Academic Sessions</h2>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Create New Session</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Session Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required 
+                               placeholder="e.g., 2025/2026" pattern="[0-9]{4}/[0-9]{4}"
+                               title="Format: YYYY/YYYY (e.g., 2025/2026)">
+                        <small class="text-muted">Format: YYYY/YYYY (e.g., 2025/2026)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" name="start_date" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">End Date <span class="text-danger">*</span></label>
+                        <input type="date" name="end_date" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_active" class="form-check-input" id="isActive">
+                        <label class="form-check-label" for="isActive">Set as Active Session</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Session
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Existing Sessions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr>
+                                <td><strong>{{ session.name }}</strong></td>
+                                <td>{{ session.start_date.strftime('%d %b, %Y') }}</td>
+                                <td>{{ session.end_date.strftime('%d %b, %Y') }}</td>
+                                <td>
+                                    {% if session.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not session.is_active %}
+                                    <a href="{{ url_for('activate_session', session_id=session.id) }}" 
+                                       class="btn btn-sm btn-success"
+                                       onclick="return confirm('Activate this session?')">
+                                        <i class="bi bi-check-circle"></i> Activate
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No sessions created yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

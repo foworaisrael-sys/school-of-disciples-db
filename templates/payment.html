@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block page_title %}Record Payment{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Record Payment</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="paymentForm" action="{{ url_for('payment') }}">
+                    <!-- Student Identifier -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Student Identifier:</label>
+                        <div class="input-group">
+                            <input type="text" name="identifier" id="identifier" class="form-control form-control-lg" 
+                                   required placeholder="Enter Matric No. or Phone Number">
+                            <button type="button" class="btn btn-outline-secondary" id="verifyStudent">
+                                <i class="bi bi-check-circle"></i> Verify
+                            </button>
+                        </div>
+                        <small class="text-muted">You can use either Matric Number (e.g., SOD202620949) or Phone Number</small>
+                        <div id="studentInfo" class="mt-2"></div>
+                    </div>
+                    
+                    <!-- Payment Type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Payment Type:</label>
+                        <select name="payment_type" class="form-select form-select-lg" required>
+                            <option value="">Select payment type...</option>
+                            <option value="School Fees">School Fees</option>
+                            <option value="Registration">Registration</option>
+                            <option value="Logistics">Logistics</option>
+                            <option value="Books">Books</option>
+                            <option value="Uniform">Uniform</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Amount -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Amount (₦):</label>
+                        <input type="number" step="0.01" name="amount" class="form-control form-control-lg" required 
+                               min="0.01" placeholder="0.00">
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status:</label>
+                        <select name="status" class="form-select form-select-lg" required>
+                            <option value="Paid">Paid</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Notes (Optional):</label>
+                        <textarea name="notes" class="form-control" rows="2" 
+                                  placeholder="Additional notes about the payment"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-info w-100 py-3" id="submitBtn" disabled>
+                        <i class="bi bi-cash"></i> Record Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Today's Date Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Today's Date</h5>
+            </div>
+            <div class="card-body text-center">
+                <h3>{{ date.today().strftime('%d %B, %Y') }}</h3>
+                <p class="text-muted">{{ date.today().strftime('%A') }}</p>
+            </div>
+        </div>
+        
+        <!-- Quick Tips Card -->
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Quick Steps</h5>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-flush">
+                    <li class="list-group-item">Enter student's Matric No. or Phone</li>
+                    <li class="list-group-item">Click Verify to confirm student</li>
+                    <li class="list-group-item">Select payment type</li>
+                    <li class="list-group-item">Enter amount</li>
+                    <li class="list-group-item">Select status</li>
+                    <li class="list-group-item">Click Record Payment</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Students Quick Select -->
+{% if recent_students %}
+<div class="card mt-3">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Recent Students (Click to Auto-fill)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            {% for student in recent_students %}
+            <div class="col-6 col-md-3">
+                <button type="button" class="btn btn-outline-secondary w-100 text-start" 
+                        onclick="setStudent('{{ student.identifier }}')">
+                    <small>
+                        <strong>{{ student.first_name }} {{ student.last_name }}</strong><br>
+                        <span class="text-muted">{{ student.identifier }}</span>
+                    </small>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+let verifiedStudent = false;
+let verifiedStudentId = null;
+
+function verifyStudent() {
+    const identifier = document.getElementById('identifier').value;
+    const studentInfo = document.getElementById('studentInfo');
+    
+    if (identifier.length < 5) {
+        studentInfo.innerHTML = '<div class="alert alert-warning">Please enter a valid identifier</div>';
+        return;
+    }
+    
+    // Show loading state
+    studentInfo.innerHTML = '<div class="alert alert-info">Verifying...</div>';
+    
+    fetch(`/get_student/${encodeURIComponent(identifier)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.found) {
+                verifiedStudent = true;
+                verifiedStudentId = data.id;
+                studentInfo.innerHTML = `<div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> 
+                    Student found: <strong>${data.name}</strong> (${data.identifier})
+                </div>`;
+            } else {
+                verifiedStudent = false;
+                verifiedStudentId = null;
+                studentInfo.innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Student not found! Please check the number.
+                </div>`;
+            }
+            checkSubmitEnabled();
+        })
+        .catch(error => {
+            verifiedStudent = false;
+            verifiedStudentId = null;
+            studentInfo.innerHTML = `<div class="alert alert-danger">Error verifying student</div>`;
+            checkSubmitEnabled();
+        });
+}
+
+function setStudent(identifier) {
+    document.getElementById('identifier').value = identifier;
+    verifyStudent();
+}
+
+function checkSubmitEnabled() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = !verifiedStudent;
+}
+
+// Add event listeners
+document.getElementById('identifier').addEventListener('blur', verifyStudent);
+document.getElementById('verifyStudent').addEventListener('click', verifyStudent);
+
+// Auto-verify if identifier is pasted
+document.getElementById('identifier').addEventListener('paste', function() {
+    setTimeout(verifyStudent, 100);
+});
+
+// Form submission validation
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    if (!verifiedStudent) {
+        e.preventDefault();
+        alert('Please verify the student first');
+        return false;
+    }
+    
+    // Show loading state on submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+});
+</script>
+{% endblock %}

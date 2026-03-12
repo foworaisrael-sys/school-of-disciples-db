@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block page_title %}Edit Student{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Edit Student Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> You can edit either Matric Number OR Phone Number (at least one is required)
+                </div>
+                
+                <form method="POST" id="editStudentForm" action="{{ url_for('edit_student', student_id=student.id) }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Matric Number</label>
+                            <input type="text" name="matric_no" class="form-control" 
+                                   value="{{ student.matric_no or '' }}" 
+                                   placeholder="e.g., SOD202620949" pattern="SOD[0-9]{9}">
+                            <small class="text-muted">Format: SOD + year + 5 digits</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" name="phone" class="form-control" 
+                                   value="{{ student.phone or '' }}" 
+                                   placeholder="e.g., 08012345678">
+                            <small class="text-muted">At least 10 digits</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" name="first_name" class="form-control" 
+                                   value="{{ student.first_name }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" name="last_name" class="form-control" 
+                                   value="{{ student.last_name }}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" 
+                               value="{{ student.email or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Academic Session</label>
+                        <select name="session_id" class="form-select">
+                            <option value="">Select Session</option>
+                            {% for session in sessions %}
+                            <option value="{{ session.id }}" {% if student.session_id == session.id %}selected{% endif %}>
+                                {{ session.name }} {% if session.is_active %}(Active){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning flex-fill py-3">
+                            <i class="bi bi-save"></i> Update Student
+                        </button>
+                        <a href="{{ url_for('view_details', student_id=student.id) }}" class="btn btn-secondary flex-fill py-3">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+document.getElementById('editStudentForm').addEventListener('submit', function(e) {
+    const matric = document.querySelector('input[name="matric_no"]').value.trim();
+    const phone = document.querySelector('input[name="phone"]').value.trim();
+    
+    if (!matric && !phone) {
+        e.preventDefault();
+        alert('Please provide either Matric Number or Phone Number');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+myenv/
+.virtualenv/
+.env/
+
+# Database
+*.db
+*.db.backup
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Flask
+instance/
+.webassets-cache
+.flaskenv
+
+# Logs
+logs/
+*.log

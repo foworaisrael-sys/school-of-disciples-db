@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block page_title %}Record Attendance{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Record Attendance by Module</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="attendanceForm" action="{{ url_for('attendance') }}">
+                    <!-- Module Selection Buttons -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">1. Select Module:</label>
+                        <div class="row g-2">
+                            {% for module in modules %}
+                            <div class="col-6 col-sm-4 col-md-3">
+                                <button type="button" class="btn btn-outline-primary w-100 module-btn" 
+                                        data-module-id="{{ module.id }}"
+                                        data-module-num="{{ module.module_number }}">
+                                    Module {{ module.module_number }}
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="module_id" id="selected_module" required>
+                        <div id="selected_module_display" class="mt-2 text-success fw-bold"></div>
+                    </div>
+                    
+                    <!-- Student Identifier -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Enter Student Identifier:</label>
+                        <div class="input-group">
+                            <input type="text" name="identifier" id="identifier" class="form-control form-control-lg" 
+                                   required placeholder="Enter Matric No. or Phone Number">
+                            <button type="button" class="btn btn-outline-secondary" id="verifyStudent">
+                                <i class="bi bi-check-circle"></i> Verify
+                            </button>
+                        </div>
+                        <small class="text-muted">You can use either Matric Number (e.g., SOD202620949) or Phone Number</small>
+                        <div id="studentInfo" class="mt-2"></div>
+                    </div>
+                    
+                    <!-- Status Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">3. Select Status:</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="status" id="present" value="Present" autocomplete="off" checked>
+                                <label class="btn btn-outline-success w-100 py-3" for="present">
+                                    <i class="bi bi-check-circle"></i> Present
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="status" id="late" value="Late" autocomplete="off">
+                                <label class="btn btn-outline-warning w-100 py-3" for="late">
+                                    <i class="bi bi-exclamation-circle"></i> Late
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="status" id="absent" value="Absent" autocomplete="off">
+                                <label class="btn btn-outline-danger w-100 py-3" for="absent">
+                                    <i class="bi bi-x-circle"></i> Absent
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100 py-3" id="submitBtn" disabled>
+                        <i class="bi bi-check-lg"></i> Record Attendance
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Today's Date Card -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Today's Date</h5>
+            </div>
+            <div class="card-body text-center">
+                <h3>{{ date.today().strftime('%d %B, %Y') }}</h3>
+                <p class="text-muted">{{ date.today().strftime('%A') }}</p>
+            </div>
+        </div>
+        
+        <!-- Quick Tips Card -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Quick Steps</h5>
+            </div>
+            <div class="card-body">
+                <ol class="list-group list-group-flush">
+                    <li class="list-group-item">Click on a module button (1-10)</li>
+                    <li class="list-group-item">Enter student's Matric No. or Phone</li>
+                    <li class="list-group-item">Click Verify to confirm student</li>
+                    <li class="list-group-item">Select attendance status</li>
+                    <li class="list-group-item">Click Record Attendance</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Students Quick Select -->
+{% if recent_students %}
+<div class="card mt-3">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Recent Students (Click to Auto-fill)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            {% for student in recent_students %}
+            <div class="col-6 col-md-3">
+                <button type="button" class="btn btn-outline-secondary w-100 text-start" 
+                        onclick="setStudent('{{ student.identifier }}')">
+                    <small>
+                        <strong>{{ student.first_name }} {{ student.last_name }}</strong><br>
+                        <span class="text-muted">{{ student.identifier }}</span>
+                    </small>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+let selectedModuleId = null;
+let selectedModuleNum = null;
+let verifiedStudent = false;
+
+// Module button click handlers
+document.querySelectorAll('.module-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Remove active class from all module buttons
+        document.querySelectorAll('.module-btn').forEach(b => {
+            b.classList.remove('active', 'btn-primary');
+            b.classList.add('btn-outline-primary');
+        });
+        
+        // Add active class to clicked button
+        this.classList.remove('btn-outline-primary');
+        this.classList.add('active', 'btn-primary');
+        
+        // Store selected module
+        selectedModuleId = this.dataset.moduleId;
+        selectedModuleNum = this.dataset.moduleNum;
+        document.getElementById('selected_module').value = selectedModuleId;
+        document.getElementById('selected_module_display').innerHTML = 
+            `<i class="bi bi-check-circle"></i> Selected: Module ${selectedModuleNum}`;
+        
+        // Enable submit if both module and verified student
+        checkSubmitEnabled();
+    });
+});
+
+function verifyStudent() {
+    const identifier = document.getElementById('identifier').value;
+    const studentInfo = document.getElementById('studentInfo');
+    
+    if (!selectedModuleId) {
+        studentInfo.innerHTML = '<div class="alert alert-warning">Please select a module first</div>';
+        return;
+    }
+    
+    if (identifier.length < 5) {
+        studentInfo.innerHTML = '<div class="alert alert-warning">Please enter a valid identifier</div>';
+        return;
+    }
+    
+    // Show loading state
+    studentInfo.innerHTML = '<div class="alert alert-info">Verifying...</div>';
+    
+    fetch(`/get_student/${encodeURIComponent(identifier)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.found) {
+                verifiedStudent = true;
+                studentInfo.innerHTML = `<div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> 
+                    Student found: <strong>${data.name}</strong> (${data.identifier})
+                </div>`;
+            } else {
+                verifiedStudent = false;
+                studentInfo.innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Student not found! Please check the number.
+                </div>`;
+            }
+            checkSubmitEnabled();
+        })
+        .catch(error => {
+            verifiedStudent = false;
+            studentInfo.innerHTML = `<div class="alert alert-danger">Error verifying student</div>`;
+            checkSubmitEnabled();
+        });
+}
+
+function setStudent(identifier) {
+    document.getElementById('identifier').value = identifier;
+    verifyStudent();
+}
+
+function checkSubmitEnabled() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = !(selectedModuleId && verifiedStudent);
+}
+
+// Add event listeners
+document.getElementById('identifier').addEventListener('blur', verifyStudent);
+document.getElementById('verifyStudent').addEventListener('click', verifyStudent);
+
+// Auto-verify if identifier is pasted
+document.getElementById('identifier').addEventListener('paste', function() {
+    setTimeout(verifyStudent, 100);
+});
+
+// Form submission validation
+document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+    if (!selectedModuleId) {
+        e.preventDefault();
+        alert('Please select a module');
+        return false;
+    }
+    
+    if (!verifiedStudent) {
+        e.preventDefault();
+        alert('Please verify the student first');
+        return false;
+    }
+    
+    // Show loading state on submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Recording...';
+});
+</script>
+
+<style>
+.module-btn.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.module-btn {
+    padding: 15px 5px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.module-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-outline-success, .btn-outline-warning, .btn-outline-danger {
+    padding: 15px 5px;
+    font-weight: bold;
+}
+
+.btn-check:checked + .btn-outline-success {
+    background-color: #198754;
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-warning {
+    background-color: #ffc107;
+    color: black;
+}
+
+.btn-check:checked + .btn-outline-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+#identifier {
+    font-size: 18px;
+}
+</style>
+{% endblock %}

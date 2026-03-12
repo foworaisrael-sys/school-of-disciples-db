@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block page_title %}Register Student{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Student Registration Form</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Note:</strong> You can register using either Matric Number OR Phone Number (at least one is required)
+                </div>
+                
+                <form method="POST" id="registrationForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Matric Number</label>
+                            <input type="text" name="matric_no" class="form-control" 
+                                   placeholder="e.g., SOD202620949" pattern="SOD[0-9]{9}">
+                            <small class="text-muted">Format: SOD + year + 5 digits (e.g., SOD202620949)</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" name="phone" class="form-control" 
+                                   placeholder="e.g., 08012345678">
+                            <small class="text-muted">At least 10 digits</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" name="first_name" class="form-control" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" name="last_name" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email (Optional)</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Academic Session</label>
+                        <select name="session_id" class="form-select">
+                            <option value="">Select Session (Optional)</option>
+                            {% for session in sessions %}
+                            <option value="{{ session.id }}" {% if active_session and active_session.id == session.id %}selected{% endif %}>
+                                {{ session.name }} {% if session.is_active %}(Active){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-3">
+                        <i class="bi bi-person-plus"></i> Register Student
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Registration Guide</h5>
+            </div>
+            <div class="card-body">
+                <h6>Identification Options:</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-1-circle text-primary"></i>
+                        <strong>Matric Number</strong> - For students with official matric numbers
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-2-circle text-primary"></i>
+                        <strong>Phone Number</strong> - For students without matric numbers
+                    </li>
+                </ul>
+                <hr>
+                <h6>Requirements:</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        At least one ID (Matric or Phone) is required
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        Matric format: SOD + 4-digit year + 5 digits
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        Phone: 10-15 digits
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if active_session %}
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Active Session</h5>
+            </div>
+            <div class="card-body text-center">
+                <h4>{{ active_session.name }}</h4>
+                <p class="text-muted">
+                    {{ active_session.start_date.strftime('%d %b, %Y') }} - 
+                    {{ active_session.end_date.strftime('%d %b, %Y') }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Form validation
+document.getElementById('registrationForm').addEventListener('submit', function(e) {
+    const matric = document.querySelector('input[name="matric_no"]').value.trim();
+    const phone = document.querySelector('input[name="phone"]').value.trim();
+    
+    if (!matric && !phone) {
+        e.preventDefault();
+        alert('Please provide either Matric Number or Phone Number');
+    }
+});
+</script>
+{% endblock %}
