@@ -1,15 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Student, Attendance, Payment, AcademicSession, Module
 from config import Config
 from datetime import date, datetime
 from flask import send_file
-import pandas as pd
 from fpdf import FPDF
-from io import BytesIO
+from io import BytesIO, StringIO
 import os
 import re
+import csv
 import sys
 
 app = Flask(__name__)
@@ -601,9 +601,10 @@ def delete_student(student_id):
     
     return redirect(url_for('list_students'))
 
-@app.route('/export_students_excel')
+@app.route('/export_students_csv')
 @login_required
-def export_students_excel():
+def export_students_csv():
+    """Export students to CSV file"""
     session_filter = request.args.get('session', 'all')
     
     # Filter students by session if specified
@@ -615,35 +616,38 @@ def export_students_excel():
         students = Student.query.all()
         session_name = 'All'
     
-    data = [{
-        'ID': s.identifier,
-        'First Name': s.first_name,
-        'Last Name': s.last_name,
-        'Email': s.email or '',
-        'Phone': s.phone or '',
-        'Matric No': s.matric_no or 'N/A',
-        'Session': s.session.name if s.session else 'N/A',
-        'Total Payments': f"₦{s.total_paid:,.2f}",
-        'Attendance Count': s.attendance_count
-    } for s in students]
+    # Create CSV data
+    si = StringIO()
+    cw = csv.writer(si)
     
-    df = pd.DataFrame(data)
-    output = BytesIO()
+    # Write headers
+    cw.writerow(['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Matric No', 'Session', 'Total Payments', 'Attendance Count'])
     
-    try:
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Students')
-    except Exception as e:
-        flash(f'Error creating Excel file: {str(e)}', 'danger')
-        return redirect(url_for('list_students'))
+    # Write data rows
+    for s in students:
+        cw.writerow([
+            s.identifier,
+            s.first_name,
+            s.last_name,
+            s.email or '',
+            s.phone or '',
+            s.matric_no or 'N/A',
+            s.session.name if s.session else 'N/A',
+            f"₦{s.total_paid:,.2f}",
+            s.attendance_count
+        ])
     
-    output.seek(0)
+    output = si.getvalue()
+    si.close()
     
-    filename = f'students_{session_name}_{date.today().strftime("%Y%m%d")}.xlsx'
-    return send_file(output, 
-                    as_attachment=True, 
-                    download_name=filename,
-                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    # Create response
+    filename = f'students_{session_name}_{date.today().strftime("%Y%m%d")}.csv'
+    
+    return Response(
+        output,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 @app.route('/export_students_pdf')
 @login_required
@@ -861,10 +865,10 @@ def attendance_report():
                          selected_session=session_filter,
                          selected_module=module_filter)
 
-@app.route('/export_attendance_report')
+@app.route('/export_attendance_report_csv')
 @login_required
-def export_attendance_report():
-    """Export attendance report to Excel"""
+def export_attendance_report_csv():
+    """Export attendance report to CSV"""
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     module_filter = request.args.get('module', 'all')
@@ -906,36 +910,37 @@ def export_attendance_report():
     
     attendance_data = query.order_by(Attendance.date.desc(), Module.module_number).all()
     
-    # Create DataFrame
-    data = [{
-        'Date': record.date.strftime('%Y-%m-%d'),
-        'Module': f"Module {record.module_number}",
-        'Matric No': record.matric_no or 'N/A',
-        'Phone': record.phone or 'N/A',
-        'First Name': record.first_name,
-        'Last Name': record.last_name,
-        'Status': record.status,
-        'Time': record.time.strftime('%H:%M:%S') if record.time else 'N/A',
-        'Session': record.session_name or 'N/A'
-    } for record in attendance_data]
+    # Create CSV
+    si = StringIO()
+    cw = csv.writer(si)
     
-    df = pd.DataFrame(data)
-    output = BytesIO()
+    # Write headers
+    cw.writerow(['Date', 'Module', 'Matric No', 'Phone', 'First Name', 'Last Name', 'Status', 'Time', 'Session'])
     
-    try:
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name=f'Attendance_{start}_{end}')
-    except Exception as e:
-        flash(f'Error creating Excel file: {str(e)}', 'danger')
-        return redirect(url_for('attendance_report'))
+    # Write data rows
+    for record in attendance_data:
+        cw.writerow([
+            record.date.strftime('%Y-%m-%d'),
+            f"Module {record.module_number}",
+            record.matric_no or 'N/A',
+            record.phone or 'N/A',
+            record.first_name,
+            record.last_name,
+            record.status,
+            record.time.strftime('%H:%M:%S') if record.time else 'N/A',
+            record.session_name or 'N/A'
+        ])
     
-    output.seek(0)
+    output = si.getvalue()
+    si.close()
     
-    filename = f'attendance_report_{start_date}_to_{end_date}.xlsx'
-    return send_file(output, 
-                    as_attachment=True, 
-                    download_name=filename,
-                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    filename = f'attendance_report_{start_date}_to_{end_date}.csv'
+    
+    return Response(
+        output,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 @app.route('/get_student/<identifier>')
 @login_required
